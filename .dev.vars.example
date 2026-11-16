@@ -1,0 +1,9 @@
+# 手元で pywrangler dev を動かすときの設定。
+# このファイルを .dev.vars という名前で写して使う（.dev.vars は git に入らない）。
+
+# 資料まとめファイルを取りに行くURL。手元では build/ を配って、そこから読む：
+#   python3 -m http.server 4174 --directory build --bind 127.0.0.1
+CONTENT_URL=http://127.0.0.1:4174/chat-content.json
+
+# 呼び出しを許可するサイト。手元では、アプリの開発用の画面（localhost:4173）を足す
+ALLOWED_ORIGINS=http://localhost:4173,https://quest-app.example.com

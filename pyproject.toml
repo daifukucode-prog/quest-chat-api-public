@@ -1,0 +1,67 @@
+[project]
+name = "quest-chat-api"
+version = "0.1.0"
+description = "AI自動運転クエストの質問チャットAPI"
+requires-python = ">=3.12"
+# 本番（Cloudflare Workers）にも入る部品
+dependencies = [
+    "fastapi",
+    "pydantic", # 形の確認（FastAPI も中で使っている）
+    "httpx2",   # 通信の部品。資料まとめファイルを取りに行く、Claude API を呼ぶ
+]
+
+[dependency-groups]
+# 手元の開発だけで使う部品
+dev = [
+    "workers-py",          # pywrangler（Workers を手元で動かす道具）
+    "workers-runtime-sdk", # Workers の部品の型情報
+    "uvicorn",             # 手元で FastAPI を動かすサーバー（本番では使わない）
+    "pytest",              # 自動テスト
+    "python-dotenv",       # Uvicorn の --env-file で .dev.vars を読むため
+    "pyyaml",              # 評価用の質問集（YAML）を読むため
+    "ruff>=0.17.5",
+    "mypy>=2.4.1",
+]
+
+[tool.pytest.ini_options]
+# テストから src/ の中のファイルを読み込めるようにする
+pythonpath = ["src"]
+testpaths = ["tests"]
+
+# ---- 書き方をそろえる道具（ruff）----
+# 使い方:  uv run ruff check .      （まずい書き方を見つける）
+#          uv run ruff format .     （見た目をそろえる）
+[tool.ruff]
+line-length = 120
+target-version = "py312"
+# 検証のときの試作は、本番のコードではないので見ない（CLAUDE.md の「reference/ について」）
+extend-exclude = ["reference"]
+
+[tool.ruff.lint]
+# E・W: 基本の書き方 / F: 使っていない変数や読み込み / I: 読み込みの並び順
+# B: 間違いやすい書き方 / UP: 古い書き方 / SIM: もっと簡単に書ける所
+select = ["E", "W", "F", "I", "B", "UP", "SIM"]
+# E501（1行の長さ）は見ない。日本語の注釈と、AIへの指示文（長い文字列）が多く、
+# 全角を2文字ぶんと数えるため、意味のある所で折り返せない行がほとんどになる
+ignore = ["E501"]
+
+[tool.ruff.lint.isort]
+# src/ の中のファイルどうしの読み込み（import chat など）を、自分のコードとして並べる
+known-first-party = ["answer", "app", "chat", "content", "guard", "llm", "retrieve", "schemas", "settings", "store", "worker", "fakes"]
+
+# ---- 型の確認の道具（mypy）----
+# 使い方:  uv run mypy
+[tool.mypy]
+python_version = "3.12"
+files = ["src"]
+mypy_path = "src"
+# 関数の中身も、型が書かれていなくても確かめる
+check_untyped_defs = true
+warn_unused_ignores = true
+warn_redundant_casts = true
+
+[[tool.mypy.overrides]]
+# Cloudflare Workers の中にだけある部品。型の情報が配られていないので、中身は確かめない
+module = ["asgi"]
+ignore_missing_imports = true
+

@@ -1,0 +1,18 @@
+# 秘密情報（絶対に git に入れない）
+.dev.vars
+.env
+.env.*
+
+# 道具・部品・作り直せるもの
+.tools/
+.venv/
+.venv-workers/
+python_modules/
+node_modules/
+.wrangler/
+__pycache__/
+build/
+# pywrangler が uv.lock から毎回作り直すファイル
+pylock.toml
+
+.DS_Store

@@ -1,0 +1,31 @@
+{
+	"$schema": "node_modules/wrangler/config-schema.json",
+	"name": "quest-chat-api",
+	// 本番の入口。FastAPI 本体は src/app.py にある
+	"main": "src/worker.py",
+	"compatibility_date": "2026-11-14",
+	// Python で Workers を動かすための指定
+	"compatibility_flags": ["python_workers"],
+	// 設定の値（秘密ではないもの）。手元では .dev.vars に同じ名前で書くと、そちらが使われる
+	"vars": {
+		// 資料まとめファイルを取りに行くURL。
+		// 公開用のリポジトリでは、URL を見本の値にしてある。
+		// アプリがこのファイルを出力するようになったら、
+		// https://quest-app.example.com/chat-content.json に書き換える
+		"CONTENT_URL": "https://quest-content.example.com/chat-content.json",
+		// 呼び出しを許可するサイト。カンマで区切って並べる（アプリの移行のときは新旧の両方を書く）
+		"ALLOWED_ORIGINS": "https://quest-app.example.com",
+		// 緊急停止。"false" にすると、質問を受け付けずに「メンテナンス中」を返す
+		"CHAT_ENABLED": "true"
+	},
+	// 質問の記録と回数を入れるデータベース（D1）。コードからは env.DB で使う
+	"d1_databases": [
+		{
+			"binding": "DB",
+			"database_name": "quest-chat-api",
+			// D1 の ID。公開用のリポジトリでは、見本の値にしてある（本物の値は、作業用の設定に置く）
+			"database_id": "00000000-0000-0000-0000-000000000000",
+			"migrations_dir": "migrations"
+		}
+	]
+}

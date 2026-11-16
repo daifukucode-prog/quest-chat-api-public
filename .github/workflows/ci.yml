@@ -1,0 +1,44 @@
+# GitHub に送るたびに、書き方・型・テストを自動で確かめる。
+# 手元で同じことをするには:
+#   uv run ruff check . && uv run ruff format --check . && uv run mypy && uv run pytest
+# 本物の Claude API は呼ばない（テストでは AI を偽物に差し替えてある）ので、キーも料金も要らない。
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# 同じブランチに続けて送ったときは、古いほうの実行を止める
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    name: 書き方・型・テスト
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: uv を入れる
+        uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.12"
+          enable-cache: true
+
+      - name: 部品を入れる（uv.lock のとおりに）
+        run: uv sync --locked
+
+      - name: まずい書き方がないか（ruff check）
+        run: uv run ruff check .
+
+      - name: 見た目がそろっているか（ruff format）
+        run: uv run ruff format --check .
+
+      - name: 型が合っているか（mypy）
+        run: uv run mypy
+
+      - name: 自動テスト（pytest）
+        run: uv run pytest
