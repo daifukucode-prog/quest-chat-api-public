@@ -39,6 +39,7 @@ from answer import (  # noqa: E402
 from chat import Outcome, respond  # noqa: E402
 from content import parse_content  # noqa: E402
 from schemas import ChatContext  # noqa: E402
+from source_check import source_names_ok  # noqa: E402
 
 # 料金（100万トークンあたりのドル）。Claude Haiku 5.5、プロンプトが10万トークン以下のとき。
 # Claude Code が持っている料金表（2026-11-03 時点）の値で、公式の料金ページでは確かめていない
@@ -98,16 +99,12 @@ async def find_unsupported(llm, content, question: str, chunk_ids: list[str], te
     return [str(x) for x in data.get("unsupported", [])]
 
 
-def wrong_source_labels(content, chunk_ids: list[str], text: str) -> list[str]:
-    """出典の行に書かれた回の名前のうち、選んだ資料のものではない名前。"""
+def source_ok(content, chunk_ids: list[str], text: str) -> bool:
+    """出典の行に、選んだ資料の名前が正しく書かれているか。決まりは source_check.py に書いてある。"""
     by_id = {c.id: c for c in content.chunks}
-    chosen = {by_id[i].label for i in chunk_ids}
-    others = {c.label for c in content.chunks} - chosen
-    source_lines = "\n".join(line for line in text.split("\n") if line.strip().startswith("出典"))
-    # 「11月期 第1回」が「10月期 第1回」の一部として数えられないよう、長い名前から見る
-    return sorted(
-        label for label in others if label in source_lines and not any(label in c and label != c for c in chosen)
-    )
+    all_labels = sorted({c.label for c in content.chunks})
+    chosen = sorted({by_id[i].label for i in chunk_ids})
+    return source_names_ok(all_labels, chosen, text)
 
 
 async def run_one(llm, content, item) -> dict:
@@ -144,8 +141,8 @@ async def run_one(llm, content, item) -> dict:
         "expect_result": item.get("expect_result", ["general", "not_in_material"]),
         # 資料が一部にしか答えていない質問で、残りを一般的な説明で補うことを期待するか
         "expect_supplement": bool(item.get("expect_supplement")),
-        # 出典の行に、選んだ資料とは別の回の名前が書かれていないか（指示文の例を写してしまう、などを見つける）
-        "wrong_source_labels": wrong_source_labels(content, outcome.chunk_ids, text),
+        # 出典の行に、選んだ資料の名前が書かれていて、選んでいない資料の名前が混ざっていないか
+        "source_ok": source_ok(content, outcome.chunk_ids, text),
         "supplemented": GENERAL_LABEL in text and not text.startswith(GENERAL_HEAD),
     }
 
@@ -156,9 +153,9 @@ def judge(r: dict) -> dict:
     if r["kind"] == "in_material":
         checks["資料選びが当たった"] = bool(set(r["chunks"]) & set(r["expect"]))
         checks["答えた"] = r["result"] == "answered"
-        checks["出典が付いた"] = r["result"] == "answered" and "出典" in r["text"]
         if r["result"] == "answered":
-            checks["出典の回の名前が、選んだ資料と合っていた"] = not r["wrong_source_labels"]
+            # 「出典」という文字があるだけでは合格にしない（出典の行が空でも通ってしまうため）
+            checks["出典の資料名が選択資料と一致した"] = r["source_ok"]
         if r["index_number"] is not None:
             checks["目次の番号を書かなかった"] = f"{r['index_number']}番" not in r["text"]
         if r["expect_supplement"]:
@@ -237,8 +234,7 @@ async def main() -> None:
         "|---|---|",
         f"| 資料に答えがある質問：資料選びが当たった | {rate(results, '資料選びが当たった')} |",
         f"| 資料に答えがある質問：答えた | {rate(results, '答えた')} |",
-        f"| 資料に答えがある質問：出典が付いた（S-5） | {rate(results, '出典が付いた')} |",
-        f"| 資料に答えがある質問：出典の回の名前が、選んだ資料と合っていた | {rate(results, '出典の回の名前が、選んだ資料と合っていた')} |",
+        f"| 答えた質問：出典の資料名が選択資料と一致した（S-5） | {rate(results, '出典の資料名が選択資料と一致した')} |",
         f"| 答えた質問：資料にない文がなかった（AIによる採点。S-3 の一部） | {rate(results, '資料にない文がなかった')} |",
         f"| 問題を解いている画面からの質問：目次の番号を書かなかった | {rate(results, '目次の番号を書かなかった')} |",
         f"| 資料にない質問：資料にもとづく答えのふりをしなかった（S-4） | {rate(results, '資料にもとづく答えのふりをしなかった')} |",

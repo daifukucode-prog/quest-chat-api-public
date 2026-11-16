@@ -25,7 +25,7 @@ dev = [
 
 [tool.pytest.ini_options]
 # テストから src/ の中のファイルを読み込めるようにする
-pythonpath = ["src"]
+pythonpath = ["src", "tests/eval"]
 testpaths = ["tests"]
 
 # ---- 書き方をそろえる道具（ruff）----
@@ -47,7 +47,8 @@ ignore = ["E501"]
 
 [tool.ruff.lint.isort]
 # src/ の中のファイルどうしの読み込み（import chat など）を、自分のコードとして並べる
-known-first-party = ["answer", "app", "chat", "content", "guard", "llm", "retrieve", "schemas", "settings", "store", "worker", "fakes"]
+# （fakes はテスト用、source_check は評価用の、自分のコード）
+known-first-party = ["answer", "app", "chat", "content", "guard", "llm", "retrieve", "schemas", "settings", "store", "worker", "fakes", "source_check"]
 
 # ---- 型の確認の道具（mypy）----
 # 使い方:  uv run mypy
